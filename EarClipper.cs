@@ -3,8 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Experimental.AI;
 public static class EarClipper
 {
+    //Ear Clipping Algorithm based on:
+    //D. Eberly. Triangulation by Ear Clipping. Geometric Tools, Redmond WA 98052. 2002
+    //https://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf
     public static List<int> triangulate(List<Vector2> points)
     {
         List<int> indexList = Enumerable.Range(0, points.Count).ToList();
@@ -39,15 +43,36 @@ public static class EarClipper
 
         return triangles;
     }
-    public static List<int> triangulateWithHoles(List<Vector2> points, List<Vector2> hole, out List<Vector2> newPoints)
+    public static List<int> triangulateWithHoles(List<Vector2> points, List<List<Vector2>> holes, out List<Vector2> newPoints)
     {
-        hole.Reverse();
-        getMutuallyVisiblePoints(points, hole, out int n, out int m);
+        newPoints = new List<Vector2>(points);
 
-        newPoints = cutOpenPolygon(points, hole, n, m);
+        while(holes.Count > 0)
+        {
+            int holeIndex = getMaxXPolygon(holes);
+            holes[holeIndex].Reverse();
+
+            getMutuallyVisiblePoints(newPoints, holes[holeIndex], out int n, out int m);
+            newPoints = cutOpenPolygon(newPoints, holes[holeIndex], n, m);
+
+            holes.RemoveAt(holeIndex);
+        }
+
         return triangulate(newPoints);
     }
 
+    static int getMaxXPolygon(List<List<Vector2>> holes)
+    {
+        if (holes.Count == 0)
+        {
+            return -1;
+        }
+
+        return holes
+        .Select((polygon, index) => new { Index = index, MaxX = polygon.Max(point => point.x) })
+        .OrderByDescending(item => item.MaxX)
+        .First().Index;
+    }
     static List<Vector2> cutOpenPolygon(List<Vector2> points, List<Vector2> hole, int n, int m)
     {
         List<Vector2> newPoints = new List<Vector2>(points);
@@ -101,13 +126,21 @@ public static class EarClipper
 
             
             if(m.y == v0.y){
-                mv = i;
-                return;
+                if (closest.x > v0.x)
+                {
+                    closest = v0;
+                    mv = i;
+                    continue;
+                }
             }
 
             if(m.y == v1.y){
-                mv = (i + 1) % points.Count;
-                return;
+                if (closest.x > v1.x)
+                {
+                    closest = v1;
+                    mv = (i + 1) % points.Count;
+                    continue;
+                }
             }
 
             if (LineIntersector.intersectionPoint(m, m + new Vector2(100000, 0), v0, v1, out Vector2 intersection))
@@ -116,6 +149,7 @@ public static class EarClipper
                 {
                     closest = intersection;
                     p = (v0.x >= v1.x) ? i : (i + 1) % points.Count;
+                    mv = -1;
                 }
             }
         }
@@ -163,7 +197,10 @@ public static class EarClipper
         float cross2 = cross(c - b, p - b);
         float cross3 = cross(a - c, p - c);
 
-        if (cross1 >= 0f || cross2 >= 0f || cross3 >= 0f)
+        if (p == a || p == b || p == c)
+            return false;
+
+        if (cross1 > 0f || cross2 > 0f || cross3 > 0f)
             return false;
 
         return true;

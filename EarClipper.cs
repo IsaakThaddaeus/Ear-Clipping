@@ -1,64 +1,56 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 public static class EarClipper
 {
     public static List<int> triangulate(List<Vector2> points)
     {
-        List<Vector2> vertices = new List<Vector2>(points);
+        List<int> indexList = Enumerable.Range(0, points.Count).ToList();
         List<int> triangles = new List<int>();
 
-        while (vertices.Count > 3)
+        while (indexList.Count > 3)
         {
-            for (int i = 0; i < vertices.Count; i++)
+            for (int i = 0; i < indexList.Count; i++)
             {
-                Vector2 x = vertices[mod(i - 1, vertices.Count)];
-                Vector2 a = vertices[mod(i, vertices.Count)];
-                Vector2 y = vertices[mod(i + 1, vertices.Count)];
+                int xI = indexList[mod(i - 1, indexList.Count)];
+                int aI = indexList[i];
+                int yI = indexList[mod(i + 1, indexList.Count)];
 
-                if (cross(x - a, y - a) > 0 && !pointInEar(x, a, y, vertices))
+                Vector2 xV = points[xI];
+                Vector2 aV = points[aI];
+                Vector2 yV = points[yI];
+
+                if (cross(xV - aV, yV - aV) > 0 && !pointInEar(xI, aI, yI, points))
                 {
-                    triangles.Add(points.IndexOf(x));
-                    triangles.Add(points.IndexOf(a));
-                    triangles.Add(points.IndexOf(y));
-                    vertices.RemoveAt(i);
+                    triangles.Add(xI);
+                    triangles.Add(aI);
+                    triangles.Add(yI);
+                    indexList.RemoveAt(i);
                     break;
                 }
             }
         }
 
-        triangles.Add(points.IndexOf(vertices[0]));
-        triangles.Add(points.IndexOf(vertices[1]));
-        triangles.Add(points.IndexOf(vertices[2]));
+        triangles.Add(indexList[0]);
+        triangles.Add(indexList[1]);
+        triangles.Add(indexList[2]);
 
         return triangles;
     }
-    public static List<int> triangulateWithHoles(List<Vector2> points, List<Vector2> hole)
+    public static List<int> triangulateWithHoles(List<Vector2> points, List<Vector2> hole, out List<Vector2> newPoints)
     {
-        List<Vector2> newPoints = new List<Vector2>(points);
-
         hole.Reverse();
-        getMutuallyVisiblePoints(newPoints, hole, out int n, out int m);
-        cutOpenPolygon(newPoints, hole, n, m);
+        getMutuallyVisiblePoints(points, hole, out int n, out int m);
 
-        Debug.Log("n: " + n + " m: " + m);
-
-        for (int i = 0; i < newPoints.Count; i ++)
-        {
-            Debug.Log(i + " : " + newPoints[i]);
-        }
-
-        //triangulate(newPoints);
-
-        return null;
-        
-        
-
+        newPoints = cutOpenPolygon(points, hole, n, m);
+        return triangulate(newPoints);
     }
 
-    static void cutOpenPolygon(List<Vector2> points, List<Vector2> hole, int n, int m)
+    static List<Vector2> cutOpenPolygon(List<Vector2> points, List<Vector2> hole, int n, int m)
     {
+        List<Vector2> newPoints = new List<Vector2>(points);
         List<Vector2> insertionPoints = new List<Vector2>();
 
         for(int i = 0; i < hole.Count; i++)
@@ -68,10 +60,9 @@ public static class EarClipper
         insertionPoints.Add(hole[m]);
         insertionPoints.Add(points[n]);
 
-        points.InsertRange(n + 1, insertionPoints);
+        newPoints.InsertRange(n + 1, insertionPoints);
+        return newPoints;
     }
-
-    //Identify Mutually Visible Points
     static void getMutuallyVisiblePoints(List<Vector2> points, List<Vector2> hole, out int n, out int m)
     {
         n = -1;
@@ -148,20 +139,19 @@ public static class EarClipper
 
         return reflexes;
     }
-    static int getMinimumAngle(Vector2 M, Vector2 I, List<int> reflexes, List<Vector2> points)
+     static int getMinimumAngle(Vector2 M, Vector2 I, List<int> reflexes, List<Vector2> points)
     {
         return reflexes.OrderBy(i => Vector2.Angle(I - M, points[i] - M)).First();
     }
 
-
-    static bool pointInEar(Vector2 x, Vector2 a, Vector2 y, List<Vector2> vertices)
+    static bool pointInEar(int xI, int aI, int yI, List<Vector2> vertices)
     {
         for (int i = 0; i < vertices.Count; i++)
         {
-            if (i == vertices.IndexOf(x) || i == vertices.IndexOf(a) || i == vertices.IndexOf(y))
+            if (i == xI || i == aI || i == yI)
                 continue;
-               
-            if (pointInTriangle(vertices[i], x, a, y))
+
+            if (pointInTriangle(vertices[i], vertices[xI], vertices[aI], vertices[yI]))
                 return true;
         }
 
@@ -173,7 +163,7 @@ public static class EarClipper
         float cross2 = cross(c - b, p - b);
         float cross3 = cross(a - c, p - c);
 
-        if (cross1 > 0f || cross2 > 0f || cross3 > 0f)
+        if (cross1 >= 0f || cross2 >= 0f || cross3 >= 0f)
             return false;
 
         return true;

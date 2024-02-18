@@ -1,9 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.Experimental.AI;
 public static class EarClipper
 {
     //Ear Clipping Algorithm based on:

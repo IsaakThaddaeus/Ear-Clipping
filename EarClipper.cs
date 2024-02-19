@@ -41,11 +41,12 @@ public static class EarClipper
 
         return triangles;
     }
-    public static List<int> triangulateWithHoles(List<Vector2> points, List<List<Vector2>> holes, out List<Vector2> newPoints)
+    public static List<int> triangulateWithHoles(List<Vector2> points, List<List<Vector2>> inputHoles, out List<Vector2> newPoints)
     {
         newPoints = new List<Vector2>(points);
+        List<List<Vector2>> holes = inputHoles.Select(hole => new List<Vector2>(hole)).ToList();
 
-        while(holes.Count > 0)
+        while (holes.Count > 0)
         {
             int holeIndex = getMaxXPolygon(holes);
             holes[holeIndex].Reverse();

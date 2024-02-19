@@ -149,6 +149,7 @@ public static class EarClipper
                     closest = intersection;
                     p = (v0.x >= v1.x) ? i : (i + 1) % points.Count;
                     mv = -1;
+                    continue;
                 }
             }
         }
@@ -163,10 +164,10 @@ public static class EarClipper
                 continue;
 
             Vector2 beforeVertex = points[mod(i - 1, points.Count)];
-            Vector2 thisVertex = points[mod(i, points.Count)];
+            Vector2 thisVertex = points[i];
             Vector2 nextVertex = points[mod(i + 1, points.Count)];
 
-            if(cross(beforeVertex - thisVertex, nextVertex - thisVertex) < 0 && pointInTriangle(points[i], a, b, points[cI]))
+            if(cross(beforeVertex - thisVertex, nextVertex - thisVertex) < 0 && pointInTriangle(points[i], b, a, points[cI]))
                 reflexes.Add(i);
         }
 
@@ -204,6 +205,8 @@ public static class EarClipper
 
         return true;
     }
+
+
     static float cross(Vector2 a, Vector2 b){
         return a.x * b.y - a.y * b.x;
     }
